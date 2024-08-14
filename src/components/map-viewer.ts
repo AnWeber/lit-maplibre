@@ -67,21 +67,21 @@ export class MapViewer extends LitElement {
     });
 
     this._map.addLayer({
-      id: "heatmap_data_source",
+      id: "heatmap_layer",
       type: "heatmap",
       source: heatMapSource,
       maxzoom: 9,
       paint: {
         // // Increase the heatmap weight based on frequency and property magnitude
-        "heatmap-weight": [
-          "interpolate",
-          ["linear"],
-          ["get", "mag"],
-          0,
-          0,
-          6,
-          1,
-        ],
+        // "heatmap-weight": [
+        //   "interpolate",
+        //   ["linear"],
+        //   ["get", "mag"],
+        //   0,
+        //   0,
+        //   6,
+        //   1,
+        // ],
         // Increase the heatmap color weight weight by zoom level
         // heatmap-intensity is a multiplier on top of heatmap-weight
         "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 9, 3],
