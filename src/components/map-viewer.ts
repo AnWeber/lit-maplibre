@@ -8,6 +8,7 @@ import { customElementIfNotExists } from "./custom-element.js";
 import * as maplibregl from "maplibre-gl";
 import { osmStyle } from "./osm-style.js";
 
+const heatMapLayer = "heatmap_layer";
 const heatMapSource = "heatmap_data_source";
 
 @customElementIfNotExists("map-viewer")
@@ -16,6 +17,8 @@ export class MapViewer extends LitElement {
 
   @property({ type: Array })
   public features?: Array<Feature>;
+  @property({ type: Boolean })
+  public toggled: boolean = false;
 
   public override connectedCallback() {
     super.connectedCallback();
@@ -30,88 +33,122 @@ export class MapViewer extends LitElement {
       center: [-120, 50],
       zoom: 2,
     });
-
-    this._map.on("load", () => this.mapLoaded());
   }
 
+  private _needFeatureUpdate = false;
   public override updated(propertyValues: PropertyValues): void {
     super.updated(propertyValues);
-    if (propertyValues.has("features") && this._map) {
-      console.info(
-        JSON.stringify(
-          this.features?.map((f) => ({ ...f, properties: undefined }))
-        )
-      );
-      const source = this._map.getSource(heatMapSource);
-
-      if (source instanceof maplibregl.GeoJSONSource) {
-        source.setData({
-          type: "FeatureCollection",
-          features: this.features || [],
-        });
-      }
+    if (propertyValues.has("features")) {
+      this._needFeatureUpdate = true;
+      this.refreshFeatures();
+    } else if (propertyValues.has("toggled")) {
+      this.refreshFeatures();
     }
   }
 
-  private mapLoaded(): void {
-    if (!this._map) {
+  private get maplibreMap() {
+    // return this.mapConnector.map.mapRenderer.map;
+    return this._map;
+  }
+
+  private _layerInitialized = false;
+
+  private async initLayer() {
+    if (!this._layerInitialized && this.maplibreMap) {
+      this._layerInitialized = true;
+      if (!this.maplibreMap.isStyleLoaded()) {
+        // only needed in showcase
+        await new Promise<void>((resolve) => this._map?.on("load", resolve));
+      }
+      this.maplibreMap.addSource(heatMapSource, {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: [],
+        },
+      });
+
+      this.maplibreMap.addLayer({
+        id: heatMapLayer,
+        type: "heatmap",
+        layout: {
+          visibility: "none",
+        },
+        source: heatMapSource,
+        maxzoom: 9,
+        paint: {
+          // // Increase the heatmap weight based on frequency and property magnitude
+          // "heatmap-weight": [
+          //   "interpolate",
+          //   ["linear"],
+          //   ["get", "mag"],
+          //   0,
+          //   0,
+          //   6,
+          //   1,
+          // ],
+          // Increase the heatmap color weight weight by zoom level
+          // heatmap-intensity is a multiplier on top of heatmap-weight
+          "heatmap-intensity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0,
+            1,
+            9,
+            3,
+          ],
+          // Color ramp for heatmap.  Domain is 0 (low) to 1 (high).
+          // Begin color ramp at 0-stop with a 0-transparency color
+          // to create a blur-like effect.
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0,
+            "rgba(33,102,172,0)",
+            0.2,
+            "rgb(103,169,207)",
+            0.4,
+            "rgb(209,229,240)",
+            0.6,
+            "rgb(253,219,199)",
+            0.8,
+            "rgb(239,138,98)",
+            1,
+            "rgb(178,24,43)",
+          ],
+          // Adjust the heatmap radius by zoom level
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 9, 20],
+          // Transition from heatmap to circle layer by zoom level
+          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 7, 1, 9, 0],
+        },
+      });
+    }
+  }
+
+  private async refreshFeatures() {
+    if (!this.maplibreMap) {
       return;
     }
 
-    this._map.addSource(heatMapSource, {
-      type: "geojson",
-      data: {
-        type: "FeatureCollection",
-        features: [],
-      },
-    });
-
-    this._map.addLayer({
-      id: "heatmap_layer",
-      type: "heatmap",
-      source: heatMapSource,
-      maxzoom: 9,
-      paint: {
-        // // Increase the heatmap weight based on frequency and property magnitude
-        // "heatmap-weight": [
-        //   "interpolate",
-        //   ["linear"],
-        //   ["get", "mag"],
-        //   0,
-        //   0,
-        //   6,
-        //   1,
-        // ],
-        // Increase the heatmap color weight weight by zoom level
-        // heatmap-intensity is a multiplier on top of heatmap-weight
-        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 9, 3],
-        // Color ramp for heatmap.  Domain is 0 (low) to 1 (high).
-        // Begin color ramp at 0-stop with a 0-transparency color
-        // to create a blur-like effect.
-        "heatmap-color": [
-          "interpolate",
-          ["linear"],
-          ["heatmap-density"],
-          0,
-          "rgba(33,102,172,0)",
-          0.2,
-          "rgb(103,169,207)",
-          0.4,
-          "rgb(209,229,240)",
-          0.6,
-          "rgb(253,219,199)",
-          0.8,
-          "rgb(239,138,98)",
-          1,
-          "rgb(178,24,43)",
-        ],
-        // Adjust the heatmap radius by zoom level
-        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 9, 20],
-        // Transition from heatmap to circle layer by zoom level
-        "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 7, 1, 9, 0],
-      },
-    });
+    if (this.toggled) {
+      await this.initLayer();
+      this.maplibreMap.setLayoutProperty(heatMapLayer, "visibility", "visible");
+      if (this._needFeatureUpdate) {
+        const source = this.maplibreMap.getSource(heatMapSource);
+        if (source instanceof maplibregl.GeoJSONSource) {
+          source.setData({
+            type: "FeatureCollection",
+            features: this.features || [],
+          });
+        }
+      }
+    } else {
+      this.maplibreMap.setLayoutProperty(heatMapLayer, "visibility", "none");
+    }
   }
+
   public static override styles = css`
     :host {
       display: block;
