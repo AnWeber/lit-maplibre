@@ -10,7 +10,7 @@ export class ShowcaseApp extends LitElement {
       <button @click=${() => this.setFeatures(locations)}>Heatmap</button>
       <button @click=${() => this.toggleVisible()}>Show/ Hide Layer</button>
       <a
-        href="https://github.com/AnWeber/lit-maplibre/blob/main/src/components/map-viewer.ts#L71"
+        href="https://github.com/AnWeber/lit-maplibre/blob/main/src/components/map-viewer.ts"
         >Source</a
       >
     </div>`;
@@ -20,8 +20,8 @@ export class ShowcaseApp extends LitElement {
     return document.querySelector("map-viewer") as MapViewer;
   }
 
-  private setFeatures(features: Array<Feature>) {
-    this.mapViewer.features = features;
+  private setFeatures(locations: Array<Feature>) {
+    this.mapViewer.locations = locations;
   }
   private toggleVisible() {
     this.mapViewer.toggled = !this.mapViewer.toggled;

@@ -1,6 +1,3 @@
-/**
- * Copyright 2019 Justin Fagnani <justin@fagnani.com>
- */
 import { LitElement, PropertyValues, css } from "lit";
 import { property } from "lit/decorators.js";
 import type { Feature } from "geojson";
@@ -16,7 +13,7 @@ export class MapViewer extends LitElement {
   private _map?: maplibregl.Map;
 
   @property({ type: Array })
-  public features?: Array<Feature>;
+  public locations?: Array<Feature>;
   @property({ type: Boolean })
   public toggled: boolean = false;
 
@@ -47,12 +44,15 @@ export class MapViewer extends LitElement {
   }
 
   private get maplibreMap() {
-    // return this.mapConnector.map.mapRenderer.map;
+    // return (this.mapConnector?.mapElement.map as any).mapRenderer.map;
     return this._map;
   }
 
   private _layerInitialized = false;
 
+  /*
+   * external lib content
+   */
   private async initLayer() {
     if (!this._layerInitialized && this.maplibreMap) {
       this._layerInitialized = true;
@@ -131,6 +131,8 @@ export class MapViewer extends LitElement {
     if (!this.maplibreMap) {
       return;
     }
+    // did only works in showcase now
+    // integration into geolocation failed (15min timeboxed)
 
     if (this.toggled) {
       await this.initLayer();
@@ -140,7 +142,7 @@ export class MapViewer extends LitElement {
         if (source instanceof maplibregl.GeoJSONSource) {
           source.setData({
             type: "FeatureCollection",
-            features: this.features || [],
+            features: this.locations || [],
           });
         }
       }
