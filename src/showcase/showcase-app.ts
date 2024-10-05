@@ -5,6 +5,11 @@ import type { Feature } from "geojson";
 
 @customElementIfNotExists("showcase-app")
 export class ShowcaseApp extends LitElement {
+  constructor() {
+    super();
+    this.setFeatures(locations);
+  }
+
   public override render() {
     return html`<div class="buttongroup">
       <button @click=${() => this.setFeatures(locations)}>Heatmap</button>

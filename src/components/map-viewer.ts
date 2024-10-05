@@ -35,7 +35,7 @@ export class MapViewer extends LitElement {
   private _needFeatureUpdate = false;
   public override updated(propertyValues: PropertyValues): void {
     super.updated(propertyValues);
-    if (propertyValues.has("features")) {
+    if (propertyValues.has("locations")) {
       this._needFeatureUpdate = true;
       this.refreshFeatures();
     } else if (propertyValues.has("toggled")) {
